@@ -1,0 +1,76 @@
+
+name: wedding_app
+description: A Flutter wedding app for managing RSVPs
+version: 1.0.0
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.3
+  cloud_firestore: ^5.6.7
+  qr_flutter: ^4.1.0
+  url_launcher: ^6.2.0
+  http: ^1.1.0
+  cupertino_icons: ^1.0.8
+  flutter_web_plugins:
+    sdk: flutter
+  provider: ^6.1.1
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+flutter:
+  uses-material-design: true
+  
+  # Wedding-themed fonts
+  fonts:
+    - family: Pacifico
+      fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf
+    - family: DancingScript
+      fonts:
+        - asset: assets/fonts/DancingScript-Regular.ttf
+        - asset: assets/fonts/DancingScript-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/DancingScript-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/DancingScript-Bold.ttf
+          weight: 700
+          
+  # Uncomment this section to add wedding-themed images
+  assets:
+    - assets/images/
+
+
+# name: wedding_app
+# description: A Flutter wedding app for managing RSVPs
+# version: 1.0.0
+# environment:
+#   sdk: ">=3.0.0 <4.0.0"
+# dependencies:
+#   flutter:
+#     sdk: flutter
+#   firebase_core: ^3.13.0
+#   firebase_auth: ^5.5.3
+#   cloud_firestore: ^5.6.7
+#   qr_flutter: ^4.1.0
+#   url_launcher: ^6.2.0
+#   http: ^1.1.0
+#   cupertino_icons: ^1.0.8
+#   flutter_web_plugins:
+#     sdk: flutter
+#   provider: ^6.1.1
+#   intl: ^0.20.2
+# dev_dependencies:
+#   flutter_test:
+#     sdk: flutter
+#   flutter_lints: ^5.0.0
+# flutter:
+#   uses-material-design: true
+#   # Un-comment this section to add assets
+#   # assets:
+#   #   - assets/images/

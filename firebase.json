@@ -1,0 +1,40 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "weddingp-9ffea",
+          "appId": "1:457538979505:android:58735fecf98f2714f7c490",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "weddingp-9ffea",
+          "configurations": {
+            "android": "1:457538979505:android:58735fecf98f2714f7c490",
+            "ios": "1:457538979505:ios:0c4b802961f8276ff7c490",
+            "macos": "1:457538979505:ios:0c4b802961f8276ff7c490",
+            "web": "1:457538979505:web:e861c7198f726e87f7c490",
+            "windows": "1:457538979505:web:6d7c42109bc4231df7c490"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "trailingSlash": false
+  }
+}

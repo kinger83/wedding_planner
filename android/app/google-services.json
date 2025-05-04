@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "457538979505",
+    "project_id": "weddingp-9ffea",
+    "storage_bucket": "weddingp-9ffea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457538979505:android:58735fecf98f2714f7c490",
+        "android_client_info": {
+          "package_name": "com.example.wedding_planner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHrcYHHxzafD1kFQmV4ygWvWIyVSaa0Sc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
