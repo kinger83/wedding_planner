@@ -146,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         SizedBox(width: 16),
                         Text(
-                          "Our Wedding",
+                          "Kingsbury Wedding",
                           style: GoogleFonts.dancingScript(
                             fontSize: 42,
                             fontWeight: FontWeight.bold,
@@ -360,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     // Bottom decorative elements
                     Text(
-                      "Made with love for your special day",
+                      "Made with love",
                       style: GoogleFonts.lato(
                         color: Colors.green[400],
                         fontStyle: FontStyle.italic,

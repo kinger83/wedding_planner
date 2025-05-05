@@ -939,7 +939,7 @@ class _GuestRSVPPageState extends State<GuestRSVPPage> with WidgetsBindingObserv
             ),
             SizedBox(height: 8),
             Text(
-              "The Soon-to-be-Weds",
+              "Kirsty & Jason",
               style: GoogleFonts.dancingScript(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
