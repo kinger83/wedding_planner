@@ -1,26 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/">
+  <!-- Add this to prevent history API issues -->
+  <script>
+    // Disable the browser's back button for RSVP pages
+    if (window.location.pathname.includes('/rsvp/')) {
+      history.pushState(null, null, document.URL);
+      window.addEventListener('popstate', function () {
+        history.pushState(null, null, document.URL);
+      });
+    }
+  </script>
+  
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Wedding App for managing RSVPs">
+  <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Wedding App">
+  <meta name="apple-mobile-web-app-title" content="wedding_app">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Mobile web app capable tag for Android -->
+  <meta name="mobile-web-app-capable" content="yes">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Wedding App</title>
+  <title>Wedding RSVP</title>
   <link rel="manifest" href="manifest.json">
 
   <script>
-    // The value below is injected by flutter build, do not change by hand.
+    // The value below is injected by flutter build, do not touch.
     var serviceWorkerVersion = null;
   </script>
   <!-- This script adds the flutter initialization JS code -->
@@ -40,19 +67,6 @@
           });
         }
       });
-    });
-  </script>
-  
-  <!-- Firebase configuration -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
-  
-  <script>
-    // Wait for flutter.js to load before initializing Firebase
-    window.addEventListener('flutter-first-frame', function() {
-      // Firebase is initialized in the Flutter code
-      console.log('Flutter app loaded!');
     });
   </script>
 </body>

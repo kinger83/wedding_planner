@@ -1,58 +1,70 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_web_plugins/flutter_web_plugins.dart';
-import 'package:wedding_app/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'package:wedding_app/screens/login_screen.dart';
 import 'package:wedding_app/screens/rsvp_dashboard.dart';
 import 'package:wedding_app/screens/guest_rsvp_page.dart';
 
+String? initialRSVPId;
+
 void main() async {
-  // Ensure Flutter bindings are initialized before Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Use path URL strategy for clean URLs
-  setUrlStrategy(PathUrlStrategy());
-  
-  // Initialize Firebase with platform-specific options
+
+  final path = Uri.base.path;
+  if (path.contains('rsvp/')) {
+    initialRSVPId = path.split('rsvp/').last;
+  }
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
-  // Start the app
+
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({Key? key}) : super(key: key);
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wedding App',
+      title: 'Wedding RSVP App',
+      navigatorKey: _navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.green,
-        primaryColor: Colors.green[200],
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green[200] ?? Colors.green,
-          primary: Colors.green[200] ?? Colors.green,
-        ),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       initialRoute: '/',
-      routes: {
-        '/': (context) => LoginScreen(),
-        '/dashboard': (context) => RSVPDashboard(),
-      },
       onGenerateRoute: (settings) {
-        // Handle dynamic routes for RSVP links
-        if (settings.name != null && settings.name!.startsWith('/rsvp/')) {
-          final rsvpId = settings.name!.substring(6); // Remove '/rsvp/'
+        final user = FirebaseAuth.instance.currentUser;
+        final name = settings.name ?? '/';
+        print('Generating route for: $name');
+
+        if (initialRSVPId != null) {
+          FirebaseAuth.instance.signOut();
           return MaterialPageRoute(
-            builder: (context) => GuestRSVPPage(rsvpId: rsvpId),
+            builder: (_) => GuestRSVPPage(rsvpId: initialRSVPId!),
+            maintainState: false,
           );
         }
-        return null;
+
+        if (name == '/dashboard') {
+          if (user == null) {
+            return MaterialPageRoute(builder: (_) => LoginScreen());
+          }
+          return MaterialPageRoute(builder: (_) => RSVPDashboard());
+        }
+
+        if (user != null) {
+          return MaterialPageRoute(
+            builder: (_) => RSVPDashboard(),
+            settings: RouteSettings(name: '/dashboard'),
+          );
+        }
+
+        return MaterialPageRoute(builder: (_) => LoginScreen());
       },
-      debugShowCheckedModeBanner: false,
     );
   }
 }
