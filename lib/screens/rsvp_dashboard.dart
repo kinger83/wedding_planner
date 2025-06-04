@@ -16,6 +16,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:wedding_app/screens/photo_gallery_page.dart';
 import 'dart:html' as html if (dart.library.html) 'dart:html';
 import 'package:http/http.dart' as http;
 
@@ -480,7 +481,7 @@ class _RSVPDashboardState extends State<RSVPDashboard> with SingleTickerProvider
   void initState() {
     super.initState();
     _isMounted = true;
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _loadRSVPData();
   }
 
@@ -657,9 +658,6 @@ class _RSVPDashboardState extends State<RSVPDashboard> with SingleTickerProvider
     }
   }
 
-
-
-
 Future<void> _generatePdf(String groupName, String rsvpUrl) async {
   // Show loading indicator
   showDialog(
@@ -698,9 +696,10 @@ Future<void> _generatePdf(String groupName, String rsvpUrl) async {
     List<String> guests = [];
     Map<String, dynamic>? groupData;
     String groupDesc = groupName;
+    String groupId = rsvpUrl.split('/').last;
     
     try {
-      final doc = await _firestore.collection('rsvps').doc(rsvpUrl.split('/').last).get();
+      final doc = await _firestore.collection('rsvps').doc(groupId).get();
       if (doc.exists) {
         groupData = doc.data() as Map<String, dynamic>;
         
@@ -725,6 +724,26 @@ Future<void> _generatePdf(String groupName, String rsvpUrl) async {
     } catch (e) {
       print('Error fetching guest data: $e');
     }
+    
+    // Generate the filename using group name and guest names
+    String fileName = groupDesc.replaceAll(' ', '_');
+    
+    // Add guest names to the filename, up to 3 names
+    if (guests.isNotEmpty) {
+      if (guests.length <= 3) {
+        // If 3 or fewer guests, include all names
+        fileName += '_' + guests.map((name) => name.replaceAll(' ', '')).join('-');
+      } else {
+        // If more than 3 guests, include first 3 names and "+others"
+        fileName += '_' + guests.sublist(0, 3).map((name) => name.replaceAll(' ', '')).join('-');
+        fileName += '+others';
+      }
+    }
+    
+    fileName += '_RSVP.pdf';
+    
+    // Remove any special characters that might cause filename issues
+    fileName = fileName.replaceAll(RegExp(r'[^\w\-\+]'), '_');
     
     // Fetch QR code from external API
     Uint8List? qrImageData;
@@ -863,7 +882,7 @@ Future<void> _generatePdf(String groupName, String rsvpUrl) async {
       final url = html.Url.createObjectUrlFromBlob(blob);
       
       final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', '${groupDesc.replaceAll(' ', '_')}_RSVP.pdf')
+        ..setAttribute('download', fileName)
         ..click();
       
       // Add a slight delay before revoking the URL to ensure download starts
@@ -884,7 +903,7 @@ Future<void> _generatePdf(String groupName, String rsvpUrl) async {
             label: 'Get QR Code',
             textColor: Colors.white,
             onPressed: () {
-              _downloadQrCode(qrImageData!, groupDesc);
+              _downloadQrCode(qrImageData!, groupId, groupDesc);
             },
           ) : null,
         ),
@@ -907,7 +926,6 @@ Future<void> _generatePdf(String groupName, String rsvpUrl) async {
     );
   }
 }
-
 
 Future<void> _generateQrCodeOnly(String groupName, String rsvpUrl) async {
   // Show loading indicator
@@ -945,6 +963,7 @@ Future<void> _generateQrCodeOnly(String groupName, String rsvpUrl) async {
   try {
     // Get document data to extract guests
     String groupDesc = groupName;
+    List<String> guestNames = [];
     
     try {
       final doc = await _firestore.collection('rsvps').doc(rsvpUrl.split('/').last).get();
@@ -954,17 +973,43 @@ Future<void> _generateQrCodeOnly(String groupName, String rsvpUrl) async {
         if (groupData.containsKey('groupName')) {
           groupDesc = groupData['groupName'];
         }
+        
+        // Extract guest names for the filename
+        if (groupData.containsKey('guests') && groupData['guests'] is List) {
+          final guestsList = groupData['guests'] as List;
+          for (var guestData in guestsList) {
+            if (guestData is Map<String, dynamic>) {
+              final name = guestData['name'] ?? 'Guest';
+              guestNames.add(name);
+            }
+          }
+        } else if (groupData.containsKey('guestName')) {
+          guestNames.add(groupData['guestName'] ?? 'Guest');
+        }
       }
     } catch (e) {
       print('Error fetching guest data: $e');
     }
     
-    // Generate the filename using group name
+    // Generate the filename using group name and guest names
     String fileName = groupDesc.replaceAll(' ', '_');
+    
+    // Add guest names to the filename, up to 3 names
+    if (guestNames.isNotEmpty) {
+      if (guestNames.length <= 3) {
+        // If 3 or fewer guests, include all names
+        fileName += '_' + guestNames.map((name) => name.replaceAll(' ', '')).join('-');
+      } else {
+        // If more than 3 guests, include first 3 names and "+others"
+        fileName += '_' + guestNames.sublist(0, 3).map((name) => name.replaceAll(' ', '')).join('-');
+        fileName += '+others';
+      }
+    }
+    
     fileName += '_QR.png';
     
     // Remove any special characters that might cause filename issues
-    fileName = fileName.replaceAll(RegExp(r'[^\w\-]'), '_');
+    fileName = fileName.replaceAll(RegExp(r'[^\w\-\+]'), '_');
     
     // Fetch QR code from external API with higher quality
     try {
@@ -1027,17 +1072,62 @@ Future<void> _generateQrCodeOnly(String groupName, String rsvpUrl) async {
     );
   }
 }
-// Helper method to download QR code separately
-// Helper method to download QR code separately
-void _downloadQrCode(Uint8List qrImageData, String groupDesc) {
+
+
+Future<void> _downloadQrCode(Uint8List qrImageData, String groupId, String groupName) async {
   try {
+    // Fetch guest names for more descriptive filename
+    List<String> guestNames = [];
+    
+    try {
+      final doc = await _firestore.collection('rsvps').doc(groupId).get();
+      if (doc.exists) {
+        final groupData = doc.data() as Map<String, dynamic>;
+        
+        // Extract guest names for the filename
+        if (groupData.containsKey('guests') && groupData['guests'] is List) {
+          final guestsList = groupData['guests'] as List;
+          for (var guestData in guestsList) {
+            if (guestData is Map<String, dynamic>) {
+              final name = guestData['name'] ?? 'Guest';
+              guestNames.add(name);
+            }
+          }
+        } else if (groupData.containsKey('guestName')) {
+          guestNames.add(groupData['guestName'] ?? 'Guest');
+        }
+      }
+    } catch (e) {
+      print('Error fetching guest data for QR download: $e');
+    }
+    
+    // Generate the filename using group name and guest names
+    String fileName = groupName.replaceAll(' ', '_');
+    
+    // Add guest names to the filename, up to 3 names
+    if (guestNames.isNotEmpty) {
+      if (guestNames.length <= 3) {
+        // If 3 or fewer guests, include all names
+        fileName += '_' + guestNames.map((name) => name.replaceAll(' ', '')).join('-');
+      } else {
+        // If more than 3 guests, include first 3 names and "+others"
+        fileName += '_' + guestNames.sublist(0, 3).map((name) => name.replaceAll(' ', '')).join('-');
+        fileName += '+others';
+      }
+    }
+    
+    fileName += '_QR.png';
+    
+    // Remove any special characters that might cause filename issues
+    fileName = fileName.replaceAll(RegExp(r'[^\w\-\+]'), '_');
+    
     // Create a blob with the correct MIME type
     final imageBlob = html.Blob([qrImageData], 'image/png');
     final imageUrl = html.Url.createObjectUrlFromBlob(imageBlob);
     
     // Create an anchor element for the download with proper styling
     final imageAnchor = html.AnchorElement(href: imageUrl)
-      ..setAttribute('download', '${groupDesc.replaceAll(' ', '_')}_QR.png')
+      ..setAttribute('download', fileName)
       ..style.display = 'none'
       ..click();
     
@@ -1045,6 +1135,18 @@ void _downloadQrCode(Uint8List qrImageData, String groupDesc) {
     Future.delayed(Duration(seconds: 1), () {
       html.Url.revokeObjectUrl(imageUrl);
     });
+    
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('QR code downloaded successfully'),
+        backgroundColor: Colors.green[400],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   } catch (e) {
     print('Error downloading QR code: $e');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1243,6 +1345,7 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
                         _buildPendingTab(),
                         _buildDietaryTab(),
                         _buildSongRequestsAndNotesTab(),
+                        _buildPhotosTab(),
                       ],
                     ),
               ),
@@ -1420,6 +1523,16 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
                 Icon(Icons.comment),
                 SizedBox(width: 8),
                 Text("Notes & Songs"),
+              ],
+            ),
+          ),
+          Tab(
+            icon: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.photo_library),
+                SizedBox(width: 8),
+                Text("Photos"),
               ],
             ),
           ),
@@ -1843,6 +1956,318 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
     );
   }
   
+  Widget _buildPhotosTab() {
+    final photoUrl = 'https://weddingp-9ffea.web.app/photos';
+    
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            "Photo Sharing Hub",
+            style: GoogleFonts.lato(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.green[800],
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Explanation
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.green[200]!),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.camera_alt,
+                  size: 48,
+                  color: Colors.green[600],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "Share this QR code at your wedding!",
+                  style: GoogleFonts.lato(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "Guests can scan to upload and view photos from your special day. Perfect for table cards, thank you notes, or posting at the venue.",
+                  style: GoogleFonts.lato(
+                    fontSize: 14,
+                    color: Colors.green[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24),
+          
+          // QR Code
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(24),
+            child: Column(
+              children: [
+                QRCodeGenerator(url: photoUrl),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          photoUrl,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.copy, size: 18, color: Colors.green[400]),
+                        onPressed: () => _copyToClipboard(context, photoUrl),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          SizedBox(height: 24),
+          
+          // Action buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                icon: Icon(Icons.download),
+                label: Text("Download QR Code"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () => _generatePhotoQrCode(),
+              ),
+              SizedBox(width: 16),
+              ElevatedButton.icon(
+                icon: Icon(Icons.photo_library),
+                label: Text("View Gallery"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[600],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PhotoGalleryPage(isAdmin: true),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 32),
+          
+          // Instructions
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.amber[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      "How to use:",
+                      style: GoogleFonts.lato(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber[800],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                _buildPhotoInstructionItem("1", "Download and print the QR code"),
+                _buildPhotoInstructionItem("2", "Place at tables, photo booth, or include in thank you cards"),
+                _buildPhotoInstructionItem("3", "Guests scan to upload their photos"),
+                _buildPhotoInstructionItem("4", "Everyone can view the shared photo gallery"),
+                _buildPhotoInstructionItem("5", "As admin, you can download or delete any photos"),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPhotoInstructionItem(String number, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.amber[100],
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.amber[300]!),
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber[700],
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _generatePhotoQrCode() async {
+    final photoUrl = 'https://weddingp-9ffea.web.app/photos';
+    
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "Creating photo gallery QR code...",
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    
+    try {
+      // Fetch QR code from external API with higher quality
+      final qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&color=2E7D32&data=${Uri.encodeComponent(photoUrl)}';
+      final response = await http.get(Uri.parse(qrUrl));
+      
+      // Close loading dialog 
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      if (response.statusCode == 200) {
+        final qrImageData = response.bodyBytes;
+        final imageBlob = html.Blob([qrImageData], 'image/png');
+        final imageUrl = html.Url.createObjectUrlFromBlob(imageBlob);
+        
+        final imageAnchor = html.AnchorElement(href: imageUrl)
+          ..setAttribute('download', 'Wedding_Photo_Gallery_QR.png')
+          ..style.display = 'none'
+          ..click();
+        
+        Future.delayed(Duration(seconds: 1), () {
+          html.Url.revokeObjectUrl(imageUrl);
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Photo gallery QR code downloaded successfully'),
+            backgroundColor: Colors.green[400],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      } else {
+        throw Exception('Failed to generate QR code');
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      print('Error generating QR code: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating QR code: $e')),
+      );
+    }
+  }
   // Helper widgets
   Widget _buildEmptyState({required String message, required IconData icon}) {
     return Center(
@@ -2412,7 +2837,10 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
     );
   }
   
- Widget _buildQRDialog(String groupName, String rsvpUrl) {
+  Widget _buildQRDialog(String groupName, String rsvpUrl) {
+  // Extract group ID from URL
+  final groupId = rsvpUrl.split('/').last;
+
   return Dialog(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(20),
@@ -2528,6 +2956,8 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
     ),
   );
 }
-  }
+
+
+}
 
 
