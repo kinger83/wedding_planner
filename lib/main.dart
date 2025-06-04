@@ -6,6 +6,7 @@ import 'package:wedding_app/screens/login_screen.dart';
 import 'package:wedding_app/screens/rsvp_dashboard.dart';
 import 'package:wedding_app/screens/guest_rsvp_page.dart';
 import 'package:wedding_app/screens/photo_gallery_page.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 String? initialRSVPId;
 bool shouldShowPhotos = false;
@@ -22,6 +23,12 @@ void main() async {
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await FirebaseAppCheck.instance.activate(
+    webProvider: ReCaptchaV3Provider('6LdGc1UrAAAAAI9c_h2aJ41GrpGChW4bBTj1QYiW'), // Replace with your actual site key
+    androidProvider: AndroidProvider.debug, // For testing
+    appleProvider: AppleProvider.debug,     // For testing
   );
 
   runApp(MyApp());
