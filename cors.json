@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["http://localhost:65057"],
+    "origin": ["https://weddingp-9ffea.web.app"],
     "method": ["GET"],
     "maxAgeSeconds": 3600
   }

@@ -67,92 +67,279 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
     }
   }
 
-  Future<void> _pickAndUploadPhotos() async {
-    // Show name dialog if not admin
-    if (!widget.isAdmin) {
-      final name = await showDialog<String>(
-        context: context,
-        builder: (context) => _buildNameDialog(),
-      );
-      
-      if (name == null || name.isEmpty) return;
-      _uploaderNameController.text = name;
-    }
+
+
+Future<void> _pickAndUploadPhotos() async {
+  // Show name dialog if not admin
+  if (!widget.isAdmin) {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => _buildNameDialog(),
+    );
     
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        allowMultiple: true,
-        withData: true,
-      );
+    if (name == null || name.isEmpty) return;
+    _uploaderNameController.text = name;
+  }
+  
+  try {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      allowMultiple: true,
+      withData: true,
+    );
+    
+    if (result != null && result.files.isNotEmpty) {
+      setState(() => _isUploading = true);
       
-      if (result != null && result.files.isNotEmpty) {
-        setState(() => _isUploading = true);
-        
-        int uploadedCount = 0;
-        int failedCount = 0;
-        
-        for (final file in result.files) {
-          if (file.bytes != null) {
-            try {
-              await _uploadPhoto(file.bytes!, file.name);
-              uploadedCount++;
-            } catch (e) {
-              print('Error uploading ${file.name}: $e');
-              failedCount++;
-            }
+      int uploadedCount = 0;
+      int failedCount = 0;
+      
+      for (final file in result.files) {
+        if (file.bytes != null) {
+          try {
+            await _uploadPhoto(file.bytes!, file.name);
+            uploadedCount++;
+          } catch (e) {
+            print('Error uploading ${file.name}: $e');
+            failedCount++;
           }
         }
-        
-        setState(() => _isUploading = false);
-        
-        // Reload photos
-        await _loadPhotos();
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Uploaded $uploadedCount photos${failedCount > 0 ? ', $failedCount failed' : ''}'),
-            backgroundColor: Colors.green[400],
-          ),
-        );
       }
-    } catch (e) {
-      print('Error picking files: $e');
+      
       setState(() => _isUploading = false);
       
+      // Reload photos
+      await _loadPhotos();
+      
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error selecting photos: $e'),
-          backgroundColor: Colors.red[400],
+          content: Text('Uploaded $uploadedCount photos${failedCount > 0 ? ', $failedCount failed' : ''}'),
+          backgroundColor: Colors.green[400],
         ),
       );
     }
+  } catch (e) {
+    print('Error picking files: $e');
+    setState(() => _isUploading = false);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error selecting photos: $e'),
+        backgroundColor: Colors.red[400],
+      ),
+    );
   }
+}
 
-  Future<void> _uploadPhoto(Uint8List bytes, String fileName) async {
-    // Generate unique filename
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final extension = fileName.split('.').last;
-    final uniqueFileName = 'wedding_photo_$timestamp.$extension';
+Future<void> _uploadPhoto(Uint8List bytes, String fileName) async {
+  print('🚨 Using original working method...');
+  
+  // Generate unique filename
+  final timestamp = DateTime.now().millisecondsSinceEpoch;
+  final extension = fileName.split('.').last;
+  final uniqueFileName = 'wedding_photo_$timestamp.$extension';
+  
+  // Upload to Firebase Storage
+  final ref = _storage.ref().child('wedding_photos/$uniqueFileName');
+  final uploadTask = ref.putData(bytes);
+  final snapshot = await uploadTask;
+  final downloadUrl = await snapshot.ref.getDownloadURL();
+  
+  // Save metadata to Firestore
+  await _firestore.collection('wedding_photos').add({
+    'url': downloadUrl,
+    'fileName': uniqueFileName,
+    'originalFileName': fileName,
+    'uploaderName': widget.isAdmin ? 'Admin' : _uploaderNameController.text,
+    'uploadedAt': FieldValue.serverTimestamp(),
+    'size': bytes.length,
+  });
+}
+// Future<void> _pickAndUploadPhotos() async {
+//   if (!kIsWeb) return;
+  
+//   // Show name dialog if not admin
+//   if (!widget.isAdmin) {
+//     final name = await showDialog<String>(
+//       context: context,
+//       builder: (context) => _buildNameDialog(),
+//     );
     
-    // Upload to Firebase Storage
-    final ref = _storage.ref().child('wedding_photos/$uniqueFileName');
-    final uploadTask = ref.putData(bytes);
-    final snapshot = await uploadTask;
-    final downloadUrl = await snapshot.ref.getDownloadURL();
+//     if (name == null || name.isEmpty) return;
+//     _uploaderNameController.text = name;
+//   }
+  
+//   final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+//   uploadInput.accept = 'image/*';
+//   uploadInput.multiple = true;
+  
+//   uploadInput.onChange.listen((e) {
+//     final files = uploadInput.files;
+//     if (files == null || files.isEmpty) return;
     
-    // Save metadata to Firestore
-    await _firestore.collection('wedding_photos').add({
-      'url': downloadUrl,
-      'fileName': uniqueFileName,
-      'originalFileName': fileName,
-      'uploaderName': widget.isAdmin ? 'Admin' : _uploaderNameController.text,
-      'uploadedAt': FieldValue.serverTimestamp(),
-      'size': bytes.length,
-    });
-  }
+//     setState(() => _isUploading = true);
+    
+//     int totalFiles = files.length;
+//     int uploadedCount = 0;
+//     int failedCount = 0;
+    
+//     for (final file in files) {
+//       final reader = html.FileReader();
+//       reader.readAsArrayBuffer(file);
+//       reader.onLoadEnd.listen((e) async {
+//         try {
+//           final bytes = reader.result as List<int>;
+//           await _uploadPhoto(Uint8List.fromList(bytes), file.name);
+//           uploadedCount++;
+//         } catch (error) {
+//           print('Error uploading ${file.name}: $error');
+//           failedCount++;
+//         }
+        
+//         // Check if all files are processed
+//         if (uploadedCount + failedCount == totalFiles) {
+//           setState(() => _isUploading = false);
+          
+//           // Reload photos
+//           await _loadPhotos();
+          
+//           // Show success message
+//           if (mounted) {
+//             ScaffoldMessenger.of(context).showSnackBar(
+//               SnackBar(
+//                 content: Text('Uploaded $uploadedCount photos${failedCount > 0 ? ', $failedCount failed' : ''}'),
+//                 backgroundColor: Colors.green[400],
+//               ),
+//             );
+//           }
+//         }
+//       });
+//     }
+//   });
+  
+//   uploadInput.click();
+// }
+
+// Future<void> _uploadPhoto(Uint8List bytes, String fileName) async {
+//   print('🚨 Testing Firestore connection first...');
+  
+//   try {
+//     // Test Firestore first (simpler)
+//     await _firestore.collection('test').add({
+//       'message': 'test connection',
+//       'timestamp': FieldValue.serverTimestamp(),
+//     });
+    
+//     print('✅ Firestore connection successful!');
+    
+//     // If Firestore works, now try Storage
+//     print('🚨 Now testing Firebase Storage...');
+//     final timestamp = DateTime.now().millisecondsSinceEpoch;
+//     final storageRef = _storage.ref().child('test_$timestamp.txt');
+    
+//     final testBytes = Uint8List.fromList('hello world'.codeUnits);
+//     await storageRef.putData(testBytes);
+    
+//     print('✅ Firebase Storage test successful!');
+//   } catch (e) {
+//     print('❌ Error: $e');
+//     throw e;
+//   }
+// }
+
+
+  // Future<void> _pickAndUploadPhotos() async {
+  //   // Show name dialog if not admin
+  //   if (!widget.isAdmin) {
+  //     final name = await showDialog<String>(
+  //       context: context,
+  //       builder: (context) => _buildNameDialog(),
+  //     );
+      
+  //     if (name == null || name.isEmpty) return;
+  //     _uploaderNameController.text = name;
+  //   }
+    
+  //   try {
+  //     final result = await FilePicker.platform.pickFiles(
+  //       type: FileType.custom,
+  //       allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+  //       allowMultiple: true,
+  //       withData: true,
+  //     );
+      
+  //     if (result != null && result.files.isNotEmpty) {
+  //       setState(() => _isUploading = true);
+        
+  //       int uploadedCount = 0;
+  //       int failedCount = 0;
+        
+  //       for (final file in result.files) {
+  //         if (file.bytes != null) {
+  //           try {
+  //             await _uploadPhoto(file.bytes!, file.name);
+  //             uploadedCount++;
+  //           } catch (e) {
+  //             print('Error uploading ${file.name}: $e');
+  //             failedCount++;
+  //           }
+  //         }
+  //       }
+        
+  //       setState(() => _isUploading = false);
+        
+  //       // Reload photos
+  //       await _loadPhotos();
+        
+  //       // Show success message
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text('Uploaded $uploadedCount photos${failedCount > 0 ? ', $failedCount failed' : ''}'),
+  //           backgroundColor: Colors.green[400],
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     print('Error picking files: $e');
+  //     setState(() => _isUploading = false);
+      
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Error selecting photos: $e'),
+  //         backgroundColor: Colors.red[400],
+  //       ),
+  //     );
+  //   }
+  // }
+
+
+
+
+
+  // Future<void> _uploadPhoto(Uint8List bytes, String fileName) async {
+  //   // Generate unique filename
+  //   final timestamp = DateTime.now().millisecondsSinceEpoch;
+  //   final extension = fileName.split('.').last;
+  //   final uniqueFileName = 'wedding_photo_$timestamp.$extension';
+    
+  //   // Upload to Firebase Storage
+  //   final ref = _storage.ref().child('wedding_photos/$uniqueFileName');
+  //   final uploadTask = ref.putData(bytes);
+  //   final snapshot = await uploadTask;
+  //   final downloadUrl = await snapshot.ref.getDownloadURL();
+    
+  //   // Save metadata to Firestore
+  //   await _firestore.collection('wedding_photos').add({
+  //     'url': downloadUrl,
+  //     'fileName': uniqueFileName,
+  //     'originalFileName': fileName,
+  //     'uploaderName': widget.isAdmin ? 'Admin' : _uploaderNameController.text,
+  //     'uploadedAt': FieldValue.serverTimestamp(),
+  //     'size': bytes.length,
+  //   });
+  // }
 
   Future<void> _deletePhoto(String photoId, String fileName) async {
     try {
@@ -190,6 +377,22 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
         ..click();
     }
   }
+
+  String _getContentType(String extension) {
+  switch (extension.toLowerCase()) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    default:
+      return 'image/jpeg';
+  }
+}
 
   void _showPhotoFullscreen(String url, String uploaderName, DateTime? uploadedAt) {
     setState(() => _selectedPhotoUrl = url);

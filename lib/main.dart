@@ -8,6 +8,7 @@ import 'package:wedding_app/screens/guest_rsvp_page.dart';
 import 'package:wedding_app/screens/photo_gallery_page.dart';
 
 String? initialRSVPId;
+bool shouldShowPhotos = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,8 @@ void main() async {
   final path = Uri.base.path;
   if (path.contains('rsvp/')) {
     initialRSVPId = path.split('rsvp/').last;
+  } else if (path.contains('/photos')) {
+    shouldShowPhotos = true;
   }
 
   await Firebase.initializeApp(
@@ -42,6 +45,7 @@ class MyApp extends StatelessWidget {
         final name = settings.name ?? '/';
         print('Generating route for: $name');
 
+        // Handle RSVP routes
         if (initialRSVPId != null) {
           FirebaseAuth.instance.signOut();
           return MaterialPageRoute(
@@ -50,6 +54,24 @@ class MyApp extends StatelessWidget {
           );
         }
 
+        // Handle photos route from URL
+        if (shouldShowPhotos) {
+          final isAdmin = user != null;
+          return MaterialPageRoute(
+            builder: (_) => PhotoGalleryPage(isAdmin: isAdmin),
+            maintainState: false,
+          );
+        }
+
+        // Handle photos route
+        if (name == '/photos') {
+          final isAdmin = user != null;
+          return MaterialPageRoute(
+            builder: (_) => PhotoGalleryPage(isAdmin: isAdmin),
+          );
+        }
+
+        // Handle dashboard route
         if (name == '/dashboard') {
           if (user == null) {
             return MaterialPageRoute(builder: (_) => LoginScreen());
@@ -57,6 +79,7 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(builder: (_) => RSVPDashboard());
         }
 
+        // Default routing
         if (user != null) {
           return MaterialPageRoute(
             builder: (_) => RSVPDashboard(),
@@ -69,6 +92,8 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
 
 // import 'package:flutter/material.dart';
 // import 'package:firebase_core/firebase_core.dart';
@@ -114,6 +139,7 @@ class MyApp extends StatelessWidget {
 //         final name = settings.name ?? '/';
 //         print('Generating route for: $name');
 
+//         // Handle RSVP routes
 //         if (initialRSVPId != null) {
 //           FirebaseAuth.instance.signOut();
 //           return MaterialPageRoute(
@@ -122,6 +148,15 @@ class MyApp extends StatelessWidget {
 //           );
 //         }
 
+//         // Handle photos route
+//         if (name == '/photos') {
+//           final isAdmin = user != null;
+//           return MaterialPageRoute(
+//             builder: (_) => PhotoGalleryPage(isAdmin: isAdmin),
+//           );
+//         }
+
+//         // Handle dashboard route
 //         if (name == '/dashboard') {
 //           if (user == null) {
 //             return MaterialPageRoute(builder: (_) => LoginScreen());
@@ -129,6 +164,7 @@ class MyApp extends StatelessWidget {
 //           return MaterialPageRoute(builder: (_) => RSVPDashboard());
 //         }
 
+//         // Default routing
 //         if (user != null) {
 //           return MaterialPageRoute(
 //             builder: (_) => RSVPDashboard(),
@@ -141,3 +177,5 @@ class MyApp extends StatelessWidget {
 //     );
 //   }
 // }
+
+
