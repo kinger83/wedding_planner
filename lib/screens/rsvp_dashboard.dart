@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:wedding_app/utils/qr_code_generator.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cross_file/cross_file.dart'; // Add this import
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -1252,7 +1253,7 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
               title: Text('Share PDF'),
               onTap: () {
                 Navigator.pop(context);
-                Share.shareFiles([pdfFile.path], text: 'Wedding RSVP for $groupName');
+                Share.shareXFiles([XFile(pdfFile.path)], text: 'Wedding RSVP for $groupName');
               },
             ),
             ListTile(
@@ -1260,7 +1261,7 @@ void _showFileOptions(File pdfFile, File qrImageFile, String groupName) {
               title: Text('Share QR Code Image'),
               onTap: () {
                 Navigator.pop(context);
-                Share.shareFiles([qrImageFile.path], text: 'Wedding RSVP QR Code for $groupName');
+                Share.shareXFiles([XFile(qrImageFile.path)], text: 'Wedding RSVP QR Code for $groupName');
               },
             ),
           ],
